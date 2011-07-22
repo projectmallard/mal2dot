@@ -132,6 +132,7 @@ node [shape=box,width=2,fontname=sans,fontsize=10,style=filled];
     <xsl:for-each select=".//mal:section">
       <xsl:call-template name="mal.link.topiclinks"/>
     </xsl:for-each>
+    <xsl:copy-of select="mal:info/mal:link[@type = 'next']"/>
   </xsl:variable>
   <xsl:for-each select="exsl:node-set($links)/mal:link">
     <xsl:text>"</xsl:text>
