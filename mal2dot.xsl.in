@@ -24,6 +24,8 @@ Free Software Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA
                 exclude-result-prefixes="mal cache exsl"
                 version="1.0">
 
+<xsl:param name="mal2dot.sections" select="false()"/>
+
 <xsl:include href="@MAL_LINK@"/>
 <xsl:variable name="mal.cache" select="/mal:cache"/>
 
@@ -101,55 +103,73 @@ rankdir="LR";
 splines="ortho";
 node [shape=box,width=2,fontname=sans,fontsize=8,style=filled];
 </xsl:text>
-  <xsl:for-each select="mal:page">
-    <xsl:variable name="prefix">
-      <xsl:choose>
-        <xsl:when test="contains(@id, '-')">
-          <xsl:value-of select="substring-before(@id, '-')"/>
-        </xsl:when>
-        <xsl:otherwise>
-          <xsl:value-of select="@id"/>
-        </xsl:otherwise>
-      </xsl:choose>
-    </xsl:variable>
-    <xsl:variable name="bgcolor" select="string($bgcolors[@prefix = $prefix])"/>
-    <xsl:text>"</xsl:text>
-    <xsl:value-of select="@id"/>
-    <xsl:text>" [tooltip="</xsl:text>
-    <xsl:variable name="tooltip">
-      <xsl:call-template name="mal.link.tooltip">
-        <xsl:with-param name="xref" select="@id"/>
-      </xsl:call-template>
-    </xsl:variable>
-    <xsl:value-of select="str:replace($tooltip, '&quot;', '\&quot;')"/>
-    <xsl:text>"</xsl:text>
-    <xsl:if test="$bgcolor != ''">
-      <xsl:text>,fillcolor="</xsl:text>
-      <xsl:value-of select="$bgcolor"/>
-      <xsl:text>"</xsl:text>
-    </xsl:if>
-    <xsl:text>];&#x000A;</xsl:text>
-  </xsl:for-each>
-  <xsl:apply-templates select="mal:page"/>
+  <xsl:apply-templates mode="mal2dot.node.mode" select="mal:page"/>
+  <xsl:apply-templates mode="mal2dot.edge.mode" select="mal:page"/>
   <xsl:text>}
 </xsl:text>
 </xsl:template>
 
-<xsl:template match="mal:page">
+<xsl:template mode="mal2dot.node.mode" match="mal:page | mal:section">
+  <xsl:variable name="pageid" select="ancestor-or-self::mal:page[1]/@id"/>
+  <xsl:variable name="prefix">
+    <xsl:choose>
+      <xsl:when test="contains($pageid, '-')">
+        <xsl:value-of select="substring-before($pageid, '-')"/>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:value-of select="$pageid"/>
+      </xsl:otherwise>
+    </xsl:choose>
+  </xsl:variable>
+  <xsl:variable name="bgcolor" select="string($bgcolors[@prefix = $prefix])"/>
+  <xsl:text>"</xsl:text>
+  <xsl:value-of select="@id"/>
+  <xsl:text>" [tooltip="</xsl:text>
+  <xsl:variable name="tooltip">
+    <xsl:call-template name="mal.link.tooltip">
+      <xsl:with-param name="xref" select="@id"/>
+    </xsl:call-template>
+  </xsl:variable>
+  <xsl:value-of select="str:replace($tooltip, '&quot;', '\&quot;')"/>
+  <xsl:text>"</xsl:text>
+  <xsl:if test="$bgcolor != ''">
+    <xsl:text>,fillcolor="</xsl:text>
+    <xsl:value-of select="$bgcolor"/>
+    <xsl:text>"</xsl:text>
+  </xsl:if>
+  <xsl:text>];&#x000A;</xsl:text>
+  <xsl:if test="$mal2dot.sections">
+    <xsl:apply-templates mode="mal2dot.node.mode" select="mal:section"/>
+  </xsl:if>
+</xsl:template>
+
+<xsl:template mode="mal2dot.edge.mode" match="mal:page | mal:section">
   <xsl:variable name="id" select="@id"/>
   <xsl:variable name="links">
     <xsl:call-template name="mal.link.topiclinks"/>
-    <xsl:for-each select=".//mal:section">
-      <xsl:call-template name="mal.link.topiclinks"/>
-    </xsl:for-each>
+    <xsl:choose>
+      <xsl:when test="$mal2dot.sections">
+        <xsl:for-each select="mal:section">
+          <mal:link xref="{@id}"/>
+        </xsl:for-each>
+      </xsl:when>
+      <xsl:otherwise>
+        <xsl:for-each select=".//mal:section">
+          <xsl:call-template name="mal.link.topiclinks"/>
+        </xsl:for-each>
+      </xsl:otherwise>
+    </xsl:choose>
     <xsl:copy-of select="mal:info/mal:link[@type = 'next']"/>
   </xsl:variable>
+  <xsl:if test="$mal2dot.sections">
+    <xsl:apply-templates mode="mal2dot.edge.mode" select="mal:section"/>
+  </xsl:if>
   <xsl:for-each select="exsl:node-set($links)/mal:link">
     <xsl:text>"</xsl:text>
     <xsl:value-of select="$id"/>
     <xsl:text>" -> "</xsl:text>
     <xsl:choose>
-      <xsl:when test="contains(@xref, '#')">
+      <xsl:when test="not($mal2dot.sections) and contains(@xref, '#')">
         <xsl:value-of select="substring-before(@xref, '#')"/>
       </xsl:when>
       <xsl:otherwise>
