@@ -42,17 +42,23 @@ mal2dot_usage () {
         echo "  -o OUT    Output to the file OUT (defaults to stdout)."
         echo "            If OUT ends in .svg, dot will be called to"
         echo "            output the SVG file directly."
+        echo "  -c        Condense nodes by common prefix."
         echo "  -s        Show sections. Sections are normally collapsed"
         echo "            into their ancestor page's node."
     )
 }
 
+dot_condensed="false()"
 dot_sections="false()"
 while [ "$#" != "0" ]; do
     case "$1" in
         "-o")
             shift
             dot_out="$1"
+            shift
+            ;;
+        "-c")
+            dot_condensed="true()"
             shift
             ;;
         "-s")
@@ -74,11 +80,13 @@ if [ "x$dot_out" != "x" ]; then
     dot_ext=`echo "$dot_out" | sed -e 's/.*\.//'`
     if [ "x$dot_ext" = "xsvg" ]; then
         xsltproc \
+            --param mal2dot.condensed "$dot_condensed" \
             --param mal2dot.sections "$dot_sections" \
             "${datadir}/mal2dot/mal2dot.xsl" "$1" \
             | dot -Tsvg -o "$dot_out"
     else
         xsltproc -o "$dot_out" \
+            --param mal2dot.condensed "$dot_condensed" \
             --param mal2dot.sections "$dot_sections" \
             "${datadir}/mal2dot/mal2dot.xsl" "$1"
     fi
